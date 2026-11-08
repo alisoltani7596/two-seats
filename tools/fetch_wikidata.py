@@ -27,30 +27,46 @@ YEARS = range(2000, 2027)
 KINDS = {"movie": ("wd:Q11424", 15), "series": ("wd:Q5398426", 8)}
 BATCH = 400
 
+
+def label(subject, var):
+    """English label, or Wikidata's language-neutral default ("mul") when the
+    item has no English one. Wikidata has been moving names that are the same
+    in every Latin-script language into "mul" and dropping the English copy,
+    so an English-only filter silently loses items — it once cost this library
+    468 titles, Christopher Nolan's The Odyssey among them."""
+    return (f'OPTIONAL {{ {subject} rdfs:label {var}_en FILTER(LANG({var}_en) = "en") }} '
+            f'OPTIONAL {{ {subject} rdfs:label {var}_mul FILTER(LANG({var}_mul) = "mul") }} '
+            f'BIND(COALESCE({var}_en, {var}_mul) AS {var}) FILTER(BOUND({var}))')
+
+
 DETAILS = {
     "core": ("?x ?label ?imdb ?dur ?seasons ?endy ?enwiki",
-             """?x rdfs:label ?label FILTER(LANG(?label) = "en")
+             label("?x", "?label") + """
                 OPTIONAL { ?x wdt:P345 ?imdb }
                 OPTIONAL { ?x wdt:P2047 ?dur }
                 OPTIONAL { ?x wdt:P2437 ?seasons }
                 OPTIONAL { ?x wdt:P582 ?end BIND(YEAR(?end) AS ?endy) }
                 OPTIONAL { ?a schema:about ?x ; schema:isPartOf <https://en.wikipedia.org/> ; schema:name ?enwiki }""", ""),
     "genres": ('?x (GROUP_CONCAT(DISTINCT ?v; separator="|") AS ?vals)',
-               '?x wdt:P136 ?g . ?g rdfs:label ?v FILTER(LANG(?v) = "en")', "GROUP BY ?x"),
-    "crew": ('?x (GROUP_CONCAT(DISTINCT ?v; separator="|") AS ?vals)',
-             '{ ?x wdt:P57 ?d } UNION { ?x wdt:P170 ?d } UNION { ?x wdt:P1431 ?d } '
-             '?d rdfs:label ?v FILTER(LANG(?v) = "en")', "GROUP BY ?x"),
+               '?x wdt:P136 ?g . ' + label('?g', '?v'), "GROUP BY ?x"),
+    # Directors and creators separately: a film is credited to its director, a
+    # series to its creator. (Executive producers, P1431, are deliberately left
+    # out — they are financiers far more often than authors.)
+    "dirs": ('?x (GROUP_CONCAT(DISTINCT ?v; separator="|") AS ?vals)',
+             '?x wdt:P57 ?d . ' + label('?d', '?v'), "GROUP BY ?x"),
+    "creators": ('?x (GROUP_CONCAT(DISTINCT ?v; separator="|") AS ?vals)',
+                 '?x wdt:P170 ?d . ' + label('?d', '?v'), "GROUP BY ?x"),
     "cast": ('?x (GROUP_CONCAT(DISTINCT ?v; separator="|") AS ?vals)',
-             '?x wdt:P161 ?c . ?c rdfs:label ?v FILTER(LANG(?v) = "en")', "GROUP BY ?x"),
+             '?x wdt:P161 ?c . ' + label('?c', '?v'), "GROUP BY ?x"),
     # Wikidata's cast property carries no billing order, so each name comes
     # with the actor's own Wikipedia reach and the assembler ranks by it:
     # the people a viewer would recognise come first.
     "castrank": ("?x ?v ?sl",
-                 '?x wdt:P161 ?c . ?c wikibase:sitelinks ?sl ; rdfs:label ?v FILTER(LANG(?v) = "en")', ""),
+                 '?x wdt:P161 ?c . ?c wikibase:sitelinks ?sl . ' + label('?c', '?v'), ""),
     "langs": ('?x (GROUP_CONCAT(DISTINCT ?v; separator="|") AS ?vals)',
-              '?x wdt:P364 ?l . ?l rdfs:label ?v FILTER(LANG(?v) = "en")', "GROUP BY ?x"),
+              '?x wdt:P364 ?l . ' + label('?l', '?v'), "GROUP BY ?x"),
     "countries": ('?x (GROUP_CONCAT(DISTINCT ?v; separator="|") AS ?vals)',
-                  '?x wdt:P495 ?c . ?c rdfs:label ?v FILTER(LANG(?v) = "en")', "GROUP BY ?x"),
+                  '?x wdt:P495 ?c . ' + label('?c', '?v'), "GROUP BY ?x"),
     "scores": ("?x ?score ?by ?method",
                """?x p:P444 ?st . ?st ps:P444 ?score ; pq:P447 ?byq .
                   VALUES ?byq { wd:Q105584 wd:Q150248 }
@@ -68,7 +84,7 @@ DETAILS = {
     "noms": ('?x (COUNT(DISTINCT ?a) AS ?vals)', "?x wdt:P1411 ?a .", "GROUP BY ?x"),
     "places": ("?x ?pname ?coord ?kind",
                """{ ?x wdt:P840 ?pl BIND("set" AS ?kind) } UNION { ?x wdt:P915 ?pl BIND("filmed" AS ?kind) }
-                  ?pl wdt:P625 ?coord ; rdfs:label ?pname FILTER(LANG(?pname) = "en")""", ""),
+                  ?pl wdt:P625 ?coord . """ + label("?pl", "?pname"), ""),
 }
 
 

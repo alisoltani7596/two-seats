@@ -648,8 +648,18 @@ function renderMatch() {
   const body = $("#matchBody");
   if (!recs.length) { body.innerHTML = `<div class="empty">Everything here has been rated. Switch the film/series filter, or clear a rating from <strong>Browse</strong>.</div>`; return; }
   let out = heroHTML(recs[0], c);
+  // New releases: a weeks-old film has no track record in the taste model or
+  // with critics yet, so it rarely reaches the top ten on fit alone. Rank this
+  // row by how big the release is as well as how well it suits the audience.
+  const thisYear = new Date().getFullYear();
+  const fresh = recs.filter(t => t.year >= thisYear - 1 && t.id !== recs[0].id)
+    .map(t => [t, c.scores[t.id].total + reachNorm(t) * 1.6 + (t.year === thisYear ? 0.5 : 0)])
+    .sort((x, y) => y[1] - x[1]).slice(0, 14).map(x => x[0]);
+  if (fresh.length >= 4) {
+    out += `<section class="sec"><div class="sec-head"><h2>New releases</h2><span class="why">${thisYear - 1}–${thisYear}, biggest and best-fitting first</span></div><div class="rail">${fresh.map(t => cardHTML(t)).join("")}</div></section>`;
+  }
   out += `<section class="sec"><div class="sec-head"><h2>Up next</h2><span class="count">${(recs.length - 1).toLocaleString()} more candidates</span></div><div class="run">${recs.slice(1, 11).map((t, i) => runRowHTML(t, c, i + 2)).join("")}</div></section>`;
-  const used = new Set(recs.slice(0, 11).map(t => t.id));
+  const used = new Set(recs.slice(0, 11).concat(fresh).map(t => t.id));
   for (const g of GENRE_ORDER) {
     const items = recs.filter(t => !used.has(t.id) && t.genres.includes(g)).slice(0, 12);
     if (items.length < 4) continue;

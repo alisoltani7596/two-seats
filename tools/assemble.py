@@ -365,7 +365,7 @@ def main():
             "runtime": runtime,
             "seasons": seasons,
             "genres": genres[:4],
-            "dirs": split("crew")[:3],
+            "dirs": ((split("creators") or split("dirs")) if c["t"] == "series" else (split("dirs") or split("creators")))[:3],
             "cast": ranked_cast(p) or split("cast")[:6],
             "lang": lang,
             "countries": countries,
