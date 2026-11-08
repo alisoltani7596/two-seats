@@ -86,7 +86,8 @@ def emit_tmdb(assets, precache):
     def base_name(name):
         n = re.sub(r"\s+(standard|basic|premium)?\s*with ads$", "", (name or "").strip(), flags=re.I)
         n = re.sub(r"\s+(amazon|apple tv|roku premium)\s+channel$", "", n, flags=re.I)
-        return n.strip().lower()
+        n = re.sub(r"\+", " plus", n)                      # "Paramount+" is "Paramount Plus"
+        return re.sub(r"\s+", " ", n).strip().lower()
     by_base = {}
     for pid, (name, _logo, prio) in providers.items():
         by_base.setdefault(base_name(name), []).append((name.lower() == base_name(name), -(prio or 99), int(pid)))
