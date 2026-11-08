@@ -82,24 +82,43 @@ Two consequences worth knowing about:
   good it is, and the app labels it that way and never lets it outweigh a real
   score.
 
-Streaming availability is deliberately absent: it differs by country and
-changes constantly, so recording it would mean shipping something wrong. Set
-your country in **Seats** and each title's "Where to watch" link goes to
-JustWatch for it.
-
 Because the summaries are CC BY-SA, `data/extra.json` carries a share-alike
 obligation — see [`data/README.md`](data/README.md). The code is MIT.
 
-## Posters
+## Posters, trailers and where to watch (TMDB)
 
-There is no poster art in the dataset, on purpose: IMDb's terms rule theirs
-out, and the posters on Wikipedia are non-free fair-use uploads that cannot be
-reused on a third-party site. Each title gets a generated poster instead
-(`src/poster.js`): one of six Swiss-style compositions — a sun, rings, a
-diagonal band, a horizon, stripes, a quarter disc — picked and positioned from
-a hash of the title, in a palette tuned per genre, with a print-grain overlay.
-The same title always gets the same poster. It is all CSS background layers on
-one element, so a grid of a hundred costs nothing to download.
+Posters, backdrops, official trailers and per-country streaming availability
+come from [TMDB](https://www.themoviedb.org/), whose API terms allow apps to
+show them with attribution. Wikidata already links almost every title to TMDB
+by id (`data/tmdb-ids.json`, CC0), so nothing is matched by guessing titles.
+
+TMDB's terms shape how this is built:
+
+- **Its data is never committed.** The terms forbid keeping it for longer than
+  six months and count handing out "archived or cached data sets" as
+  commercial use, so a public repository can't hold it. `tools/fetch_tmdb.py`
+  fetches it at build time into `cache/` (gitignored), and the build writes it
+  only into the deployed site.
+- **It is refreshed weekly.** The deploy workflow runs every Monday as well as
+  on every push, refetching anything older than six days, so availability
+  stays current and nothing outlives TMDB's limit.
+- **The key is a GitHub Actions secret** (`TMDB_TOKEN`), never in the code or
+  the site. Visitors need nothing. Without a key the build still succeeds and
+  the app falls back to generated posters and search links.
+- **Attribution:** the TMDB logo and notice are in the footer. Availability is
+  supplied to TMDB by JustWatch, credited wherever it appears.
+
+Each service in the availability list opens that service's own search for the
+title. Pick your country and services under **Seats**; titles on your services
+are marked, and Browse can show only those.
+
+Trailers play inside the app through YouTube's privacy-enhanced embed
+(`youtube-nocookie.com`), loaded only when someone presses play.
+
+**Generated posters** (`src/poster.js`) remain underneath every image as the
+placeholder and the fallback: one of six Swiss-style compositions, picked from
+a hash of the title, in a palette tuned per genre. They are what you see while
+artwork loads, offline, or in a build without a TMDB key.
 
 ## Performance
 
@@ -172,8 +191,13 @@ python3 -m http.server 8752 --directory _site
 
 ## Deploying
 
-Pushing to `main` runs `.github/workflows/pages.yml`, which builds `_site/` and
-publishes it to GitHub Pages. Nothing generated is committed except the data.
+Pushing to `main` runs `.github/workflows/pages.yml`, which fetches TMDB data
+(with the `TMDB_TOKEN` secret), builds `_site/` and publishes it to GitHub
+Pages. It also runs weekly to keep TMDB data fresh. Nothing generated is
+committed except the Wikidata library.
+
+To use TMDB locally, put a token in `~/.config/two-seats/tmdb_token` (or set
+`TMDB_TOKEN`) and run `python3 tools/fetch_tmdb.py` before building.
 
 ## Layout
 
@@ -196,4 +220,6 @@ data/                  generated library — do not hand-edit
 
 Code: [MIT](LICENSE). Data: see [`data/README.md`](data/README.md). Fonts: Bricolage Grotesque and Geist, both under the [SIL Open Font License](assets/fonts/) (licence files alongside the fonts).
 
-Not affiliated with IMDb, Rotten Tomatoes, Metacritic or JustWatch.
+This product uses TMDB and the TMDB APIs but is not endorsed, certified, or
+otherwise approved by TMDB. Not affiliated with IMDb, Rotten Tomatoes,
+Metacritic or JustWatch.

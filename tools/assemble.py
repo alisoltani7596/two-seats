@@ -440,6 +440,20 @@ def main():
         "dict": {"g": genre_list, "n": name_list, "l": lang_list, "c": country_list, "t": tag_list},
         "rows": rows,
     }
+    # Title → TMDB id, keyed by Wikidata item so it survives reordering. These
+    # ids are CC0 facts from Wikidata; everything fetched *with* them from TMDB
+    # stays out of the repository (see tools/fetch_tmdb.py).
+    tmdb_ids = {}
+    for r in records:
+        tm = (parts.get("Q%d" % r["qid"]) or {}).get("tmdb") or []
+        for row in tm:
+            if r["t"] == 0 and (row.get("m") or "").isdigit():
+                tmdb_ids[r["qid"]] = "m" + row["m"]; break
+            if r["t"] == 1 and (row.get("tv") or "").isdigit():
+                tmdb_ids[r["qid"]] = "t" + row["tv"]; break
+    (ROOT / "data" / "tmdb-ids.json").write_text(json.dumps(tmdb_ids, separators=(",", ":")))
+    print(f"  tmdb ids for {len(tmdb_ids):,} titles → data/tmdb-ids.json")
+
     extra_doc = {"v": 2, "h": hooks, "p": places, "w": arts, "i": imdbs, "c": credits}
 
     (ROOT / "data").mkdir(exist_ok=True)

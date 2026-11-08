@@ -104,6 +104,17 @@
     return r.json();
   }
 
+  // ---- TMDB: posters, backdrops, trailers, availability. Only present in a
+  // build that had a TMDB token; without it these resolve to nothing and the
+  // app keeps its generated posters and search links.
+  const IMG = "https://image.tmdb.org/t/p/";
+  let PROVIDERS = {};
+  const watchCache = {};
+  function img(path, size) {
+    if (!path) return null;
+    return IMG + size + "/" + (path.includes(".") ? path : path + ".jpg");
+  }
+
   window.TSData = {
     LANG_NAMES,
     langName: c => (c == null ? "Unknown" : LANG_NAMES[c] || c),
@@ -111,6 +122,30 @@
       const lib = decode(await getJSON(asset("titles", "data/titles.json")));
       NAMES = lib.names;
       return lib;
+    },
+    img,
+    providers: () => PROVIDERS,
+    regions: () => Object.keys((window.TS_ASSETS && window.TS_ASSETS.watch) || {}),
+    async loadMedia(titles) {
+      const url = asset("media", null);
+      if (!url) return false;
+      const [m, prov] = await Promise.all([getJSON(url), asset("providers", null) ? getJSON(asset("providers")) : {}]);
+      for (const k in m.p) { const t = titles[k]; if (t) t.poster = m.p[k]; }
+      for (const k in m.b) { const t = titles[k]; if (t) t.backdrop = m.b[k]; }
+      for (const k in m.v) { const t = titles[k]; if (t) t.trailer = m.v[k]; }
+      for (const k in m.k) { const t = titles[k]; if (t) t.tmdb = m.k[k]; }
+      PROVIDERS = prov;
+      return true;
+    },
+    // One small file per country, fetched only for the viewer's own.
+    loadWatch(cc) {
+      const url = ((window.TS_ASSETS && window.TS_ASSETS.watch) || {})[cc];
+      if (!url) return Promise.resolve(null);
+      if (!watchCache[cc]) {
+        watchCache[cc] = getJSON(url).then(w => { w.rent = new Set(w.r || []); return w; })
+          .catch(err => { delete watchCache[cc]; throw err; });
+      }
+      return watchCache[cc];
     },
     async loadExtra(titles) {
       merge(titles, await getJSON(asset("extra", "data/extra.json")));

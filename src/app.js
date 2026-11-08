@@ -51,7 +51,7 @@ const state = {
     favorites: { directors: [], actors: [] },
     genres: { like: [], avoid: [] },
     settings: { cross: 0.6, quality: 1.0, recency: 0.3 },
-    region: "", theme: "", kids: false
+    region: "", services: [], theme: "", kids: false
   },
   filters: null,
   deck: { seat: "a", history: [] },
@@ -148,16 +148,146 @@ function yearLabel(t) {
 }
 function links(t) {
   const q = enc(`${t.title} ${t.year}`);
-  const region = state.prefs.region || "";
   return {
     imdb: t.imdb ? `https://www.imdb.com/title/${t.imdb}/` : `https://www.imdb.com/find/?q=${q}`,
     wiki: t.wiki ? `https://en.wikipedia.org/wiki/${enc(t.wiki.replace(/ /g, "_"))}` : `https://en.wikipedia.org/w/index.php?search=${q}`,
     wikidata: `https://www.wikidata.org/wiki/Q${t.qid}`,
-    trailer: `https://www.youtube.com/results?search_query=${enc(t.title + " " + t.year + " official trailer")}`,
+    // The official trailer when TMDB knows it; a search otherwise.
+    trailer: t.trailer ? `https://www.youtube.com/watch?v=${t.trailer}` : `https://www.youtube.com/results?search_query=${enc(t.title + " " + t.year + " official trailer")}`,
     rt: `https://www.rottentomatoes.com/search?search=${enc(t.title)}`,
     mc: `https://www.metacritic.com/search/${enc(t.title)}/`,
-    watch: `https://www.justwatch.com/${region || "us"}/search?q=${enc(t.title)}`
+    tmdb: t.tmdb ? `https://www.themoviedb.org/${t.tmdb[0] === "m" ? "movie" : "tv"}/${t.tmdb.slice(1)}` : null
   };
+}
+
+// ---------------------------------------------------------------- where to watch
+// Availability comes from TMDB, which gets it from JustWatch; both are credited
+// wherever it is shown. Each service links to its own search for the title.
+const SERVICE_SEARCH = [
+  [/netflix/, "https://www.netflix.com/search?q="],
+  [/prime video|amazon/, "https://www.primevideo.com/search/ref=atv_nb_sr?phrase="],
+  [/apple tv/, "https://tv.apple.com/search?term="],
+  [/disney/, "https://www.disneyplus.com/search?q="],
+  [/^max$|hbo max|^max /, "https://play.max.com/search?q="],
+  [/hulu/, "https://www.hulu.com/search?q="],
+  [/crave/, "https://www.crave.ca/en/search?q="],
+  [/paramount/, "https://www.paramountplus.com/search/?q="],
+  [/peacock/, "https://www.peacocktv.com/search?q="],
+  [/crunchyroll/, "https://www.crunchyroll.com/search?q="],
+  [/mubi/, "https://mubi.com/en/search/films?query="],
+  [/tubi/, "https://tubitv.com/search/"],
+  [/pluto/, "https://pluto.tv/search/details?query="],
+  [/youtube/, "https://www.youtube.com/results?search_query="],
+  [/criterion/, "https://www.criterionchannel.com/search?q="],
+  [/britbox/, "https://www.britbox.com/search?q="],
+  [/shudder/, "https://www.shudder.com/search?q="],
+  [/kanopy/, "https://www.kanopy.com/search?query="],
+  [/cbc gem/, "https://gem.cbc.ca/search?q="],
+  [/now tv|^now$/, "https://www.nowtv.com/search?q="],
+  [/stan$/, "https://www.stan.com.au/search?q="],
+  [/hotstar|jiocinema|jiohotstar/, "https://www.hotstar.com/in/explore?search_query="],
+  [/zee5/, "https://www.zee5.com/search?q="],
+  [/viaplay/, "https://viaplay.com/search?query="],
+  [/filmin/, "https://www.filmin.es/buscador?q="],
+  [/canal\+/, "https://www.canalplus.com/recherche/?q="],
+  [/rakuten/, "https://www.rakuten.tv/search?q="],
+  [/sky go|sky store|sky /, "https://www.sky.com/search?q="]
+];
+function providerName(pid) { const p = window.TSData.providers()[pid]; return p ? p[0] : "Service"; }
+function providerLogo(pid) { const p = window.TSData.providers()[pid]; return p ? window.TSData.img(p[1], "w92") : null; }
+function serviceLink(pid, t) {
+  const name = providerName(pid).toLowerCase();
+  for (const [rx, base] of SERVICE_SEARCH) if (rx.test(name)) return base + enc(t.title);
+  const L = links(t);
+  return L.tmdb ? `${L.tmdb}/watch?locale=${state.watch ? state.watch.cc : ""}` : `https://www.google.com/search?q=${enc("watch " + t.title + " " + t.year)}`;
+}
+function regionName(cc) {
+  try { return new Intl.DisplayNames([navigator.language || "en"], { type: "region" }).of(cc) || cc; } catch (e) { return cc; }
+}
+function availability(t) {
+  const w = state.watch && state.watch.data;
+  if (!w) return null;
+  return { s: w.s[t.i] || [], f: w.f[t.i] || [], rent: w.rent.has(t.i) };
+}
+function onMyServices(t) {
+  const a = availability(t), mine = state.prefs.services || [];
+  if (!a || !mine.length) return [];
+  return a.s.concat(a.f).filter(pid => mine.includes(pid));
+}
+// A few logos for a card: the household's own services first.
+function whereStrip(t) {
+  const a = availability(t);
+  if (!a) return "";
+  const mine = state.prefs.services || [];
+  const all = a.s.concat(a.f.filter(x => !a.s.includes(x)));
+  if (!all.length) return a.rent ? `<div class="where"><span class="where-note">Rent or buy</span></div>` : "";
+  all.sort((x, y) => (mine.includes(y) ? 1 : 0) - (mine.includes(x) ? 1 : 0));
+  const shown = all.slice(0, 4);
+  return `<div class="where">${shown.map(pid => {
+    const logo = providerLogo(pid);
+    return `<a href="${esc(serviceLink(pid, t))}" target="_blank" rel="noopener" title="${esc(providerName(pid))}${a.f.includes(pid) && !a.s.includes(pid) ? " (free)" : ""}" class="${mine.includes(pid) ? "mine" : ""}">${logo ? `<img src="${logo}" alt="${esc(providerName(pid))}" loading="lazy" decoding="async" width="24" height="24">` : esc(providerName(pid))}</a>`;
+  }).join("")}${all.length > shown.length ? `<span class="where-note">+${all.length - shown.length}</span>` : ""}</div>`;
+}
+// The full list, for the details panel.
+function whereFull(t) {
+  if (!window.TSData.regions().length) return "";
+  const cc = state.watch && state.watch.cc;
+  if (!cc) return `<div class="d-sec"><h3>Where to watch</h3><p class="hint">Pick your country in <button type="button" class="link" data-tab="you">Seats</button> to see which services carry it.</p></div>`;
+  const a = availability(t), mine = state.prefs.services || [];
+  const row = (label, pids, free) => pids.length ? `<div class="wf-row"><span class="wf-k">${label}</span><div class="wf-list">${pids.map(pid => {
+    const logo = providerLogo(pid);
+    return `<a class="wf-svc${mine.includes(pid) ? " mine" : ""}" href="${esc(serviceLink(pid, t))}" target="_blank" rel="noopener">${logo ? `<img src="${logo}" alt="" loading="lazy" width="28" height="28">` : ""}<span>${esc(providerName(pid))}</span>${free ? `<em>free</em>` : ""}</a>`;
+  }).join("")}</div></div>` : "";
+  const streams = a ? a.s : [], frees = a ? a.f.filter(x => !a.s.includes(x)) : [];
+  const body = streams.length || frees.length
+    ? row("Stream", streams, false) + row("Free", frees, true) + (a.rent ? `<p class="hint">Also to rent or buy.</p>` : "")
+    : `<p class="hint">Not on a subscription service in ${esc(regionName(cc))} right now${a && a.rent ? " — available to rent or buy" : ""}.</p>`;
+  const L = links(t);
+  return `<div class="d-sec"><h3>Where to watch in ${esc(regionName(cc))}</h3>${body}
+    <p class="d-src">Availability from <a href="https://www.justwatch.com/" target="_blank" rel="noopener">JustWatch</a> via <a href="${L.tmdb ? L.tmdb + "/watch?locale=" + cc : "https://www.themoviedb.org/"}" target="_blank" rel="noopener">TMDB</a>, refreshed weekly. Each service opens its own search.</p></div>`;
+}
+// Load the viewer's country once TMDB media is in.
+function detectRegion() {
+  const regions = window.TSData.regions();
+  for (const l of navigator.languages || [navigator.language || ""]) {
+    const m = /-([A-Za-z]{2})$/.exec(l);
+    if (m && regions.includes(m[1].toUpperCase())) return m[1].toUpperCase();
+  }
+  return regions.includes("US") ? "US" : null;
+}
+function ensureWatch() {
+  const regions = window.TSData.regions();
+  if (!regions.length) return;
+  let cc = (state.prefs.region || "").toUpperCase();
+  if (!regions.includes(cc)) cc = detectRegion();
+  if (!cc) return;
+  if (state.watch && state.watch.cc === cc) return;
+  window.TSData.loadWatch(cc).then(data => {
+    if (!data) return;
+    state.watch = { cc, data };
+    rerenderAll();
+  }).catch(() => {});
+}
+function rerenderAll() {
+  if (!state.libReady || $("#app").hidden) return;
+  syncChrome();
+  if (state.tab !== "ask") renderTab();
+  if (state.drawerId) renderDrawer();
+}
+
+// ---------------------------------------------------------------- trailer player
+// Plays inside the app, through YouTube's privacy-enhanced embed domain, so
+// nothing is set until someone presses play.
+function openTrailer(t) {
+  const box = $("#player");
+  box.innerHTML = `<div class="player-in"><button type="button" class="close" data-closeplayer aria-label="Close trailer"><svg class="ic"><use href="#i-x"/></svg></button>
+    <div class="player-frame"><iframe src="https://www.youtube-nocookie.com/embed/${encodeURIComponent(t.trailer)}?autoplay=1&rel=0&playsinline=1" title="${esc(t.title)} trailer" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>
+    <p class="player-cap">${esc(t.title)} · ${yearLabel(t)} · <a href="https://www.youtube.com/watch?v=${encodeURIComponent(t.trailer)}" target="_blank" rel="noopener">open on YouTube</a></p></div>`;
+  box.hidden = false;
+}
+function closeTrailer() { const box = $("#player"); box.hidden = true; box.innerHTML = ""; }
+function trailerBtn(t, cls, label) {
+  return `<a class="${cls}" href="${links(t).trailer}" target="_blank" rel="noopener"${t.trailer ? ` data-trailer="${t.id}"` : ""}><svg class="ic"><use href="#i-play"/></svg>${label || "Trailer"}</a>`;
 }
 
 // ---------------------------------------------------------------- recommender
@@ -314,8 +444,31 @@ function titleSizeClass(title) { return title.length > 34 ? " vlong" : title.len
 
 // A generated poster. As a button it opens the title; as a span or div it is
 // decoration inside something else that is already clickable.
+// Real artwork from TMDB when this build has it, laid over the generated poster,
+// which stays underneath as the placeholder and as the fallback if an image
+// can't load. Portrait posters already carry their title, so the typeset title
+// hides once one has loaded; wide backdrops don't, so it stays.
+const LOADED = new Set();
+function artHTML(t, size) {
+  const wide = size === "wide" && t.backdrop;
+  const path = wide ? t.backdrop : t.poster;
+  if (!path) return { html: "", cls: "" };
+  const I = window.TSData.img;
+  let src, set, sizes;
+  if (wide) { src = I(path, "w780"); set = `${I(path, "w780")} 780w, ${I(path, "w1280")} 1280w`; sizes = "(max-width: 760px) 100vw, 560px"; }
+  else if (size === "mini") { src = I(path, "w92"); set = `${I(path, "w92")} 92w, ${I(path, "w185")} 185w`; sizes = "52px"; }
+  else if (size === "hero") { src = I(path, "w342"); set = `${I(path, "w342")} 342w, ${I(path, "w500")} 500w, ${I(path, "w780")} 780w`; sizes = "(max-width: 760px) 100vw, 240px"; }
+  else { src = I(path, "w342"); set = `${I(path, "w185")} 185w, ${I(path, "w342")} 342w, ${I(path, "w500")} 500w`; sizes = "(max-width: 760px) 46vw, 180px"; }
+  const kind = wide ? "bd" : "img";
+  const done = LOADED.has(src);
+  return {
+    html: `<img class="p-img" src="${src}" srcset="${set}" sizes="${sizes}" alt="" data-kind="${kind}"${size === "hero" || size === "wide" ? "" : ` loading="lazy"`} decoding="async">`,
+    cls: done ? ` has-${kind} instant` : ""
+  };
+}
 function posterHTML(t, opts) {
   opts = opts || {};
+  const art = artHTML(t, opts.size);
   const tag = opts.tag || "button";
   const attrs = tag === "button"
     ? ` type="button" data-open="${t.id}" aria-label="${esc(t.title)}, ${yearLabel(t)}: open details"`
@@ -330,7 +483,7 @@ function posterHTML(t, opts) {
       + `<span class="p-t${titleSizeClass(t.title)}">${esc(t.title)}</span>`
       + `<span class="p-s">${esc(t.director.slice(0, 2).join(", ") || t.genres.slice(0, 2).join(", "))}</span>`;
   }
-  return `<${tag} class="poster"${attrs} style="${window.TSPoster.style(t)}">${inner}</${tag}>`;
+  return `<${tag} class="poster${art.cls}"${attrs} style="${window.TSPoster.style(t)}">${art.html}${inner}</${tag}>`;
 }
 
 function gaugeHTML(sc, large) {
@@ -389,9 +542,10 @@ function cardHTML(t, opts) {
       ${reason}
       <div class="c-meta"><span>${esc(t.genres.slice(0, 2).join(" · ") || "—")}</span><span>${runtimeLabel(t)}</span></div>
       ${scoreChips(t)}
+      ${whereStrip(t)}
       <div class="actions">
         <button type="button" class="btn sm${onList ? " is-on" : ""}" data-act="list" data-id="${t.id}"><svg class="ic"><use href="#i-bookmark"/></svg>${onList ? "Saved" : "Save"}</button>
-        <a class="btn sm" href="${links(t).trailer}" target="_blank" rel="noopener"><svg class="ic"><use href="#i-play"/></svg>Trailer</a>
+        ${trailerBtn(t, "btn sm")}
       </div>
     </div>
   </article>`;
@@ -439,18 +593,19 @@ function seenNote(t) {
 function heroHTML(t, c) {
   const sc = c.scores[t.id], L = links(t), e = getEntry(t.id), onList = e.list.a || e.list.b;
   return `<article class="hero">
-    ${posterHTML(t)}
+    ${posterHTML(t, { size: "hero" })}
     <div class="hero-body">
       <div class="hero-k"><span class="pip"></span>Tonight's pick</div>
       <h2 class="hero-t">${esc(t.title)}</h2>
       <div class="hero-meta">${metaSpans(t)}${seenNote(t)}</div>
       ${t.hook ? `<p class="hero-hook">${esc(t.hook)}</p>` : ""}
       <div class="hero-why">${reasonHTML(t, c)}</div>
+      ${whereStrip(t)}
       <div class="hero-fit">${gaugeHTML(sc, true)}${fitLegendHTML(sc, c)}</div>
       <div class="hero-cta">
         <button type="button" class="btn primary" data-open="${t.id}">See details</button>
-        <a class="btn" href="${L.trailer}" target="_blank" rel="noopener"><svg class="ic"><use href="#i-play"/></svg>Trailer</a>
-        <a class="btn" href="${L.watch}" target="_blank" rel="noopener">Where to watch <svg class="ic"><use href="#i-ext"/></svg></a>
+        ${trailerBtn(t, "btn")}
+        ${(() => { const m = onMyServices(t); return m.length ? `<a class="btn" href="${esc(serviceLink(m[0], t))}" target="_blank" rel="noopener">Watch on ${esc(providerName(m[0]))} <svg class="ic"><use href="#i-ext"/></svg></a>` : ""; })()}
         <button type="button" class="btn${onList ? " is-on" : ""}" data-act="list" data-id="${t.id}"><svg class="ic"><use href="#i-bookmark"/></svg>${onList ? "Saved" : "Save"}</button>
       </div>
     </div>
@@ -460,7 +615,7 @@ function runRowHTML(t, c, rank) {
   const sc = c.scores[t.id];
   return `<button type="button" class="run-row" data-open="${t.id}">
     <span class="run-n">${rank}</span>
-    ${posterHTML(t, { tag: "span", bare: true })}
+    ${posterHTML(t, { tag: "span", bare: true, size: "mini" })}
     <span class="run-main">
       <span class="run-t">${esc(t.title)}</span>
       <span class="run-meta">${metaSpans(t)}${seenNote(t)}</span>
@@ -554,7 +709,7 @@ function renderRate() {
   <div class="deck-wrap">
     <div class="deck">
       <div class="deck-card">
-        ${posterHTML(t, { tag: "div" })}
+        ${posterHTML(t, { tag: "div", size: "wide" })}
         <div class="deck-body">
           <p class="deck-hook">${t.hook ? esc(t.hook) : state.extraReady ? "<em>No summary recorded for this one.</em>" : "<em>Loading summary…</em>"}</p>
           <div class="deck-meta">${metaSpans(t)}</div>
@@ -564,7 +719,7 @@ function renderRate() {
           <div class="deck-skip">
             <button type="button" class="btn" data-act="skip" data-id="${t.id}">Haven't seen it</button>
             ${state.deck.history.length ? `<button type="button" class="btn ghost" data-act="undo"><svg class="ic"><use href="#i-undo"/></svg>Undo</button>` : ""}
-            <a class="btn ghost" href="${L.trailer}" target="_blank" rel="noopener"><svg class="ic"><use href="#i-play"/></svg>Trailer</a>
+            ${trailerBtn(t, "btn ghost")}
           </div>
         </div>
       </div>
@@ -617,6 +772,7 @@ function filteredTitles() {
     if (f.status === "unrated" && anyRated(e)) return false;
     if (f.status === "rated" && !anyRated(e)) return false;
     if (f.status === "list" && !(e.list.a || e.list.b)) return false;
+    if (f.status === "ours" && !onMyServices(t).length) return false;
     if (f.status === "favs") {
       const fv = state.prefs.favorites;
       if (!t.director.some(d => fv.directors.includes(d)) && !t.cast.some(a => fv.actors.includes(a))) return false;
@@ -815,9 +971,7 @@ function renderYou() {
       <label class="slider">Weight of critics' scores against your own ratings<output>${st.quality.toFixed(1)}×</output><input type="range" data-setting="quality" min="0" max="2" step="0.1" value="${st.quality}"></label>
       <label class="slider">Preference for newer titles<output>${Math.round(st.recency * 100)}%</output><input type="range" data-setting="recency" min="0" max="1" step="0.05" value="${st.recency}"></label>
     </div>
-    <div class="block"><h2>Where to watch</h2><p>Streaming rights differ by country and change constantly, so this app records none. Pick your country and the "Where to watch" link on each title goes straight to JustWatch for it.</p>
-      <select id="regionSel" aria-label="Country for streaming links">${["", "us", "ca", "uk", "au", "nz", "ie", "in", "de", "fr", "es", "it", "nl", "se", "no", "dk", "fi", "br", "mx", "jp", "kr", "tr", "za"].map(r => `<option value="${r}"${state.prefs.region === r ? " selected" : ""}>${r ? r.toUpperCase() : "Pick a country"}</option>`).join("")}</select>
-    </div>
+    ${servicesBlock()}
     <div class="block"><h2>How the match is scored</h2>
       <dl class="kv">
         <dt>Fit</dt><dd>Your ratings spread over each title's genres, moods, director and cast. 5 is a strong like, 3 neutral, 1 a dislike.</dd>
@@ -834,6 +988,26 @@ function renderYou() {
   </div>`;
   wireAdder("#addDirector", "#suggDirector", ALL_PEOPLE.directors, "directors");
   wireAdder("#addActor", "#suggActor", ALL_PEOPLE.actors, "actors");
+}
+function servicesBlock() {
+  const regions = window.TSData.regions();
+  if (!regions.length) {
+    return `<div class="block"><h2>Where to watch</h2><p>${state.mediaReady === false ? "Streaming availability isn't included in this build." : "Loading streaming availability…"}</p></div>`;
+  }
+  const cc = state.watch ? state.watch.cc : (state.prefs.region || "").toUpperCase();
+  const names = regions.map(r => [r, regionName(r)]).sort((a, b) => a[1].localeCompare(b[1]));
+  const mine = state.prefs.services || [];
+  const top = state.watch ? state.watch.data.top : [];
+  const chip = pid => {
+    const logo = providerLogo(pid);
+    return `<button type="button" class="chip svc${mine.includes(pid) ? " is-on" : ""}" data-service="${pid}">${logo ? `<img src="${logo}" alt="" width="18" height="18" loading="lazy">` : ""}${esc(providerName(pid))}</button>`;
+  };
+  return `<div class="block"><h2>Where you watch</h2>
+    <p>Pick your country and the services you have. Titles on them are marked, Browse can show only those, and each title says where else it streams.</p>
+    <select id="regionSel" aria-label="Your country">${names.map(([r, n]) => `<option value="${r}"${r === cc ? " selected" : ""}>${esc(n)}</option>`).join("")}</select>
+    ${top.length ? `<div class="chips" style="margin-top:12px">${top.slice(0, 18).map(chip).join("")}</div>` : `<p class="hint">Loading services…</p>`}
+    <p class="d-src">Availability from <a href="https://www.justwatch.com/" target="_blank" rel="noopener">JustWatch</a> via <a href="https://www.themoviedb.org/" target="_blank" rel="noopener">TMDB</a>, refreshed weekly.</p>
+  </div>`;
 }
 function wireAdder(inputSel, suggSel, pool, kind) {
   const input = $(inputSel), sugg = $(suggSel);
@@ -888,14 +1062,14 @@ function renderDrawer() {
   const onList = e.list.a || e.list.b;
   $("#drawer").innerHTML = `
     <div class="d-hero">
-      ${posterHTML(t, { tag: "div", bare: true })}
+      ${posterHTML(t, { tag: "div", bare: true, size: "wide" })}
       <button type="button" class="close" data-close aria-label="Close details"><svg class="ic"><use href="#i-x"/></svg></button>
       <div class="d-in">
         <div class="kicker">${t.t === "movie" ? "Film" : "Series"} · ${yearLabel(t)} · ${runtimeLabel(t)}${t.lang ? " · " + esc(langName(t.lang)) : ""}</div>
         <h2>${esc(t.title)}</h2>
         <div class="d-cta">
-          <a class="btn on-poster solid" href="${L.trailer}" target="_blank" rel="noopener"><svg class="ic"><use href="#i-play"/></svg>Trailer</a>
-          <a class="btn on-poster" href="${L.watch}" target="_blank" rel="noopener">Where to watch <svg class="ic"><use href="#i-ext"/></svg></a>
+          ${trailerBtn(t, "btn on-poster solid", t.trailer ? "Play trailer" : "Trailer")}
+          ${(() => { const m = onMyServices(t); return m.length ? `<a class="btn on-poster" href="${esc(serviceLink(m[0], t))}" target="_blank" rel="noopener">Watch on ${esc(providerName(m[0]))} <svg class="ic"><use href="#i-ext"/></svg></a>` : ""; })()}
           <button type="button" class="btn on-poster" data-act="list" data-id="${t.id}"><svg class="ic"><use href="#i-bookmark"/></svg>${onList ? "Saved" : "Save"}</button>
         </div>
       </div>
@@ -903,6 +1077,7 @@ function renderDrawer() {
     <div class="d-body">
       ${t.hook ? `<div class="d-sec"><div class="d-hook">${esc(t.hook)}</div><p class="d-src">Adapted from the <a href="${L.wiki}" target="_blank" rel="noopener">Wikipedia article</a> under CC BY-SA 4.0.</p></div>` : ""}
       ${why ? `<div class="d-sec"><h3>Why it's here</h3><div class="d-why">${why}</div></div>` : ""}
+      ${whereFull(t)}
       <div class="d-sec"><h3>Fit</h3><div class="d-fit">${gaugeHTML(sc, true)}${fitLegendHTML(sc, c)}</div></div>
       <div class="d-sec"><h3>Scores</h3>${scoreChips(t, true)}<p class="d-src">As recorded in Wikidata, which can lag the live sites — each opens the source so you can check today's number.</p></div>
       <div class="d-sec"><h3>Rate it</h3>${seatsOn().map(rateBlock).join("")}
@@ -915,7 +1090,7 @@ function renderDrawer() {
         <dt>Genres</dt><dd>${esc(t.genres.join(", ") || "—")}</dd>
         <dt>Moods</dt><dd>${esc(t.tags.map(x => x.replace(/-/g, " ")).join(", ") || "—")}</dd>
         <dt>Country</dt><dd>${esc(t.country.join(", ") || "—")}</dd>
-        <dt>Links</dt><dd><div class="d-links"><a href="${L.imdb}" target="_blank" rel="noopener">IMDb</a><a href="${L.wiki}" target="_blank" rel="noopener">Wikipedia</a><a href="${L.wikidata}" target="_blank" rel="noopener">Wikidata</a><a href="${L.rt}" target="_blank" rel="noopener">Rotten Tomatoes</a><a href="${L.mc}" target="_blank" rel="noopener">Metacritic</a></div></dd>
+        <dt>Links</dt><dd><div class="d-links"><a href="${L.imdb}" target="_blank" rel="noopener">IMDb</a><a href="${L.wiki}" target="_blank" rel="noopener">Wikipedia</a><a href="${L.wikidata}" target="_blank" rel="noopener">Wikidata</a><a href="${L.rt}" target="_blank" rel="noopener">Rotten Tomatoes</a><a href="${L.mc}" target="_blank" rel="noopener">Metacritic</a>${L.tmdb ? `<a href="${L.tmdb}" target="_blank" rel="noopener">TMDB</a>` : ""}</div></dd>
       </dl></div>
     </div>`;
 }
@@ -938,13 +1113,22 @@ function afterEdit() {
   syncChrome();
 }
 document.addEventListener("click", ev => {
-  const b = ev.target.closest("button, a[data-open], [data-open]");
-  if (!b || b.tagName === "A" && !b.dataset.open) return;
+  const b = ev.target.closest("button, a[data-open], a[data-trailer], [data-open], #player");
+  if (!b || b.tagName === "A" && !b.dataset.open && !b.dataset.trailer) return;
 
   if (b.id === "startBtn") return startFromSetup();
   if (b.id === "soloBtn") { $("#nameB").value = ""; state.people.b.on = false; return startFromSetup(); }
   if (b.id === "themeBtn") { state.prefs.theme = currentTheme() === "dark" ? "light" : "dark"; applyTheme(); save(); syncChrome(); return; }
 
+  if (b.dataset.trailer) { const t = BY_ID[b.dataset.trailer]; if (t && t.trailer) { ev.preventDefault(); openTrailer(t); } return; }
+  if (b.hasAttribute("data-closeplayer") || b.id === "player") return closeTrailer();
+  if (b.dataset.service) {
+    const pid = +b.dataset.service, list = state.prefs.services || (state.prefs.services = []);
+    const i = list.indexOf(pid);
+    if (i >= 0) list.splice(i, 1); else list.push(pid);
+    save(); renderYou();
+    return;
+  }
   if (b.dataset.open) return openDrawer(b.dataset.open);
   if (b.hasAttribute("data-close") || b.id === "scrim") return closeDrawer();
   if (b.dataset.who && b.closest("#whoSeg")) { state.who = b.dataset.who; state.recCache = null; save(); renderAll(); return; }
@@ -1058,7 +1242,12 @@ document.addEventListener("change", ev => {
     return;
   }
   if (el.id === "kidsToggle") { state.prefs.kids = el.checked; state.recCache = null; save(); toast(el.checked ? "Children's titles now included in picks" : "Children's titles left out of picks"); return; }
-  if (el.id === "regionSel") { state.prefs.region = el.value; save(); toast(el.value ? `Streaming links set to ${el.value.toUpperCase()}` : "Country cleared"); return; }
+  if (el.id === "regionSel") {
+    state.prefs.region = el.value; state.prefs.services = []; save();
+    toast(`Showing availability in ${regionName(el.value)}`);
+    ensureWatch();
+    return;
+  }
   if (el.dataset.setting) { state.prefs.settings[el.dataset.setting] = +el.value; state.recCache = null; save(); renderYou(); return; }
   if (el.id === "sort") state.filters.sort = el.value;
   else if (el.id === "status") state.filters.status = el.value;
@@ -1103,6 +1292,7 @@ function renderBrowseKeepFocus() {
   if (pos != null && el.setSelectionRange) { try { el.setSelectionRange(pos, pos); } catch (e) { /* non-text input */ } }
 }
 document.addEventListener("keydown", ev => {
+  if (ev.key === "Escape" && !$("#player").hidden) return closeTrailer();
   if (ev.key === "Escape" && state.drawerId) return closeDrawer();
   if (state.tab !== "rate" || state.drawerId) return;
   if (/^[1-5]$/.test(ev.key)) {
@@ -1117,6 +1307,23 @@ document.addEventListener("keydown", ev => {
   }
 });
 document.addEventListener("click", ev => { if (!ev.target.closest(".adder")) $$(".sugg").forEach(s => { s.hidden = true; }); }, true);
+
+document.addEventListener("load", ev => {
+  const el = ev.target;
+  if (!el.classList || !el.classList.contains("p-img")) return;
+  LOADED.add(el.getAttribute("src"));   // re-renders show it at once, without a fade
+  const poster = el.closest(".poster");
+  if (poster) poster.classList.add(el.dataset.kind === "bd" ? "has-bd" : "has-img");
+}, true);
+document.addEventListener("error", ev => {
+  const el = ev.target;
+  if (!el.classList || el.tagName !== "IMG") return;
+  if (el.classList.contains("p-img")) return el.remove();
+  // A service logo that won't load: show the name instead of a broken image.
+  const a = el.closest(".where a");
+  if (a) { a.textContent = a.title.replace(/ \(free\)$/, ""); a.classList.add("txt"); return; }
+  if (el.closest(".wf-svc, .chip.svc")) el.remove();
+}, true);
 
 // Swipe the rating card sideways on a touch screen: left moves on to the next
 // title, right takes back the last one. Same two actions as the arrow keys.
@@ -1292,6 +1499,13 @@ async function boot() {
     $("#app").hidden = false;
     renderAll();
   }
+
+  // Posters, trailers and availability from TMDB, when this build has them.
+  window.TSData.loadMedia(TITLES).then(ok => {
+    state.mediaReady = ok;
+    if (ok) ensureWatch();
+    rerenderAll();
+  }).catch(() => { state.mediaReady = false; });
 
   // The rest of the library: summaries, locations, article names.
   window.TSData.loadExtra(TITLES).then(() => {

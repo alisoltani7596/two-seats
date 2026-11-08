@@ -57,6 +57,69 @@ def emit(rel_dir: str, stem: str, ext: str, data: bytes) -> str:
     return name
 
 
+def strip_img(path):
+    """'/abc123.jpg' → 'abc123'; anything that isn't a .jpg keeps its extension."""
+    if not path:
+        return None
+    path = path.lstrip("/")
+    return path[:-4] if path.endswith(".jpg") else path
+
+
+def emit_tmdb(assets, precache):
+    """Posters, backdrops, trailers and per-country availability, if fetched.
+
+    Read from cache/tmdb (built by tools/fetch_tmdb.py, never committed) and
+    written only into _site, so TMDB's content reaches the deployed app and
+    nowhere else — see the note at the top of fetch_tmdb.py.
+    """
+    raw_path = ROOT / "cache" / "tmdb" / "titles.json"
+    if not raw_path.exists():
+        print("  no TMDB cache: generated posters and search links only")
+        return
+    raw = json.loads(raw_path.read_text())
+    providers = json.loads((ROOT / "cache" / "tmdb" / "providers.json").read_text())
+    ids = json.loads((ROOT / "data" / "tmdb-ids.json").read_text())
+    rows = json.loads((ROOT / "data" / "titles.json").read_text())["rows"]
+
+    media = {"p": {}, "b": {}, "v": {}, "k": {}}
+    per_cc = {}
+    for i, row in enumerate(rows):
+        key = ids.get(str(row[0]))
+        d = (raw.get(key) or {}).get("d") if key else None
+        if not d:
+            continue
+        media["k"][i] = key
+        if d.get("p"): media["p"][i] = strip_img(d["p"])
+        if d.get("b"): media["b"][i] = strip_img(d["b"])
+        if d.get("v"): media["v"][i] = d["v"]
+        for cc, w in (d.get("w") or {}).items():
+            per_cc.setdefault(cc, {"s": {}, "f": {}, "r": []})
+            if w.get("s"): per_cc[cc]["s"][i] = w["s"]
+            if w.get("f"): per_cc[cc]["f"][i] = w["f"]
+            if w.get("r"): per_cc[cc]["r"].append(i)
+
+    assets["media"] = emit("data", "media", "json", json.dumps(media, separators=(",", ":")).encode())
+    used = set()
+    watch = {}
+    for cc, w in sorted(per_cc.items()):
+        streaming = len(w["s"]) + len(w["f"])
+        if streaming < 300:          # too thin to be useful; the drawer falls back to a TMDB link
+            continue
+        counts = {}
+        for lst in list(w["s"].values()) + list(w["f"].values()):
+            for pid in lst:
+                counts[pid] = counts.get(pid, 0) + 1
+        w["top"] = [pid for pid, _ in sorted(counts.items(), key=lambda kv: -kv[1])][:40]
+        used.update(counts)
+        watch[cc] = emit("data/watch", cc.lower(), "json", json.dumps(w, separators=(",", ":")).encode())
+    prov = {pid: [providers[str(pid)][0], strip_img(providers[str(pid)][1])] for pid in used if str(pid) in providers}
+    assets["providers"] = emit("data", "providers", "json", json.dumps(prov, separators=(",", ":")).encode())
+    assets["watch"] = watch
+    precache += [assets["media"], assets["providers"]]
+    print(f"  TMDB: posters {len(media['p']):,}, backdrops {len(media['b']):,}, trailers {len(media['v']):,}, "
+          f"availability for {len(watch)} countries, {len(prov)} services")
+
+
 def main():
     if OUT.exists():
         shutil.rmtree(OUT)
@@ -87,6 +150,8 @@ def main():
 
     # ---- the page
     assets = {"titles": titles, "extra": extra, "world": world, "sw": "sw.js"}
+    tmdb_precache = []
+    emit_tmdb(assets, tmdb_precache)
     html = re.sub(r"<script>window\.TS_ASSETS = .*?</script>",
                   f"<script>window.TS_ASSETS = {json.dumps(assets)};</script>", html)
     html = html.replace('<link rel="preload" href="data/titles.json"', f'<link rel="preload" href="{titles}"')
@@ -98,7 +163,7 @@ def main():
     # ---- service worker
     precache = ["./", css_name, js_name, titles, extra,
                 "assets/fonts/bricolage.woff2", "assets/fonts/geist.woff2", "assets/fonts/geist-mono.woff2",
-                "assets/favicon.svg", "assets/apple-touch-icon.png", "assets/icon-512.png", "manifest.webmanifest"]
+                "assets/favicon.svg", "assets/apple-touch-icon.png", "assets/icon-512.png", "manifest.webmanifest"] + tmdb_precache
     version = digest("".join(precache).encode() + html.encode())
     sw = (ROOT / "tools" / "sw.template.js").read_text()
     sw = sw.replace("__VERSION__", version).replace("__PRECACHE__", json.dumps(precache, indent=2))

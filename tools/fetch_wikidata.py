@@ -61,6 +61,9 @@ DETAILS = {
     # Earliest release or start date. Some films carry several (re-releases,
     # festival runs), so the per-year selection can place a 1995 film in 2014.
     "first": ('?x (MIN(YEAR(?d)) AS ?vals)', "{ ?x wdt:P577 ?d } UNION { ?x wdt:P580 ?d }", "GROUP BY ?x"),
+    # TMDB ids (CC0 in Wikidata), so the build can look up posters, trailers
+    # and streaming availability without guessing by title.
+    "tmdb": ("?x ?m ?tv", "OPTIONAL { ?x wdt:P4947 ?m } OPTIONAL { ?x wdt:P4983 ?tv }", ""),
     "awards": ('?x (COUNT(DISTINCT ?a) AS ?vals)', "?x wdt:P166 ?a .", "GROUP BY ?x"),
     "noms": ('?x (COUNT(DISTINCT ?a) AS ?vals)', "?x wdt:P1411 ?a .", "GROUP BY ?x"),
     "places": ("?x ?pname ?coord ?kind",

@@ -700,3 +700,45 @@ textarea { width: 100%; background: var(--bg3); border: 1px solid var(--line); b
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }
+
+/* ------------------------------------------------------------------ TMDB artwork
+   Real posters and backdrops sit over the generated poster, which stays
+   underneath as the placeholder and the fallback. */
+.poster > .p-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 0; opacity: 0; transition: opacity .35s ease; }
+.poster.has-img > .p-img, .poster.has-bd > .p-img { opacity: 1; }
+.poster.instant > .p-img { transition: none; }
+.poster.has-img::after, .poster.has-bd::after { display: none; }      /* no print grain on photographs */
+.poster.has-img::before { background: linear-gradient(180deg, rgb(0 0 0 / .28) 0%, transparent 16%); }
+.poster.has-img .p-t, .poster.has-img .p-s, .poster.has-img .p-k, .poster.has-img .p-y { display: none; }   /* the artwork carries its own title */
+.deck-card .poster.has-bd::before { background: linear-gradient(180deg, rgb(0 0 0 / .3) 0%, transparent 30%, transparent 40%, rgb(0 0 0 / .85) 100%); }
+
+/* ------------------------------------------------------------------ where to watch */
+.where { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.where a { display: block; border-radius: 7px; line-height: 0; font-size: 11px; }
+.where img { width: 24px; height: 24px; border-radius: 7px; display: block; }
+.where a.mine { box-shadow: 0 0 0 2px var(--bg2), 0 0 0 4px var(--b); }
+.where a.txt { font: 500 11px/1 var(--body); line-height: 1; padding: 5px 7px; border: 1px solid var(--line); border-radius: 7px; text-decoration: none; color: var(--ink2); }
+.where-note { font: 500 10.5px/1 var(--mono); color: var(--ink3); }
+.wf-row { display: grid; grid-template-columns: 64px 1fr; gap: 10px; align-items: start; margin-bottom: 10px; }
+.wf-k { font: 500 10.5px/2.4 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--ink3); }
+.wf-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.wf-svc { display: inline-flex; align-items: center; gap: 8px; padding: 5px 11px 5px 5px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg2); text-decoration: none; font-size: 13.5px; transition: border-color .15s; }
+.wf-svc:hover { border-color: var(--line2); }
+.wf-svc img { width: 28px; height: 28px; border-radius: 7px; }
+.wf-svc em { font: 500 10px/1 var(--mono); font-style: normal; text-transform: uppercase; color: var(--b); }
+.wf-svc.mine { border-color: var(--b); }
+.chip.svc img { width: 18px; height: 18px; border-radius: 5px; margin-left: -4px; }
+.hero .where { margin-top: -2px; }
+
+/* ------------------------------------------------------------------ trailer player */
+.player { position: fixed; inset: 0; z-index: 80; background: rgb(0 0 0 / .82); display: grid; place-items: center; padding: 20px; animation: fadeIn .2s ease both; backdrop-filter: blur(4px); }
+.player-in { width: min(1000px, 100%); position: relative; }
+.player-frame { aspect-ratio: 16 / 9; border-radius: 14px; overflow: hidden; background: #000; box-shadow: 0 30px 80px -20px rgb(0 0 0 / .8); }
+.player-frame iframe { width: 100%; height: 100%; border: 0; display: block; }
+.player .close { position: absolute; top: -48px; right: 0; background: rgb(255 255 255 / .12); border: 1px solid rgb(255 255 255 / .2); color: #fff; width: 38px; height: 38px; border-radius: 99px; display: grid; place-items: center; cursor: pointer; }
+.player-cap { color: rgb(255 255 255 / .7); font-size: 13px; margin: 12px 2px 0; }
+.player-cap a { color: #fff; }
+
+/* ------------------------------------------------------------------ credits */
+.tmdb-credit { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0 0 10px; }
+.tmdb-credit img { height: 12px; width: auto; display: block; opacity: .9; }

@@ -44,6 +44,14 @@ only shares a file with the summaries for loading reasons.
 World outlines from [Natural Earth](https://www.naturalearthdata.com/), which
 places its data in the public domain, via the `world-atlas` TopoJSON build.
 
+## `tmdb-ids.json` — CC0
+
+Title → TMDB id, taken from Wikidata (P4947 for films, P4983 for series). Only
+the ids are here. Posters, trailers and availability fetched *with* them from
+TMDB are never committed: TMDB's terms limit caching to six months and forbid
+redistributing its data as a dataset, so they exist only in the deployed site
+and are refetched weekly. See `tools/fetch_tmdb.py`.
+
 ## Not included: IMDb
 
 IMDb's downloadable datasets are licensed for "personal and non-commercial

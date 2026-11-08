@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  # Weekly, so posters, trailers and streaming availability stay current, and
+  # nothing fetched from TMDB is ever older than its terms allow (6 months).
+  schedule:
+    - cron: "17 6 * * 1"
 
 permissions:
   contents: read
@@ -22,6 +26,21 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+
+      # TMDB data is fetched at build time and never committed (see
+      # tools/fetch_tmdb.py). The cache only avoids refetching titles that
+      # are less than six days old; a weekly run refreshes everything.
+      - name: Restore the TMDB cache
+        uses: actions/cache@v4
+        with:
+          path: cache/tmdb
+          key: tmdb-${{ github.run_id }}
+          restore-keys: tmdb-
+      - name: Fetch posters, trailers and availability from TMDB
+        env:
+          TMDB_TOKEN: ${{ secrets.TMDB_TOKEN }}
+        run: python3 tools/fetch_tmdb.py
+
       - name: Build the site
         run: python3 tools/build_site.py
       - uses: actions/configure-pages@v5
