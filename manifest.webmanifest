@@ -1,0 +1,15 @@
+{
+  "name": "Two Seats",
+  "short_name": "Two Seats",
+  "description": "Two people rate films and series; Two Seats finds the ones you'll both enjoy.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0E1419",
+  "theme_color": "#0E1419",
+  "icons": [
+    { "src": "assets/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <title>Two Seats</title>
+  <defs>
+    <clipPath id="seatA"><rect x="2" y="7" width="17" height="18" rx="5"/></clipPath>
+  </defs>
+  <rect width="32" height="32" rx="7" fill="#0E1419"/>
+  <!-- two seats, and the overlap drawn achromatically: agreement is the answer -->
+  <rect x="2" y="7" width="17" height="18" rx="5" fill="#E8A33D"/>
+  <rect x="13" y="7" width="17" height="18" rx="5" fill="#2FB9A8"/>
+  <g clip-path="url(#seatA)"><rect x="13" y="7" width="17" height="18" rx="5" fill="#EAF1F2"/></g>
+</svg>

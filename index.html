@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Two Seats — find something you'll both want to watch</title>
+<meta name="description" content="Two people rate films and series; Two Seats finds the ones you'll both enjoy. No account, no server — everything stays in your browser.">
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#0B0F13" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#F2F4F3" media="(prefers-color-scheme: light)">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Two Seats">
+<meta property="og:description" content="Two people rate films and series; Two Seats finds the ones you'll both enjoy.">
+<meta property="og:image" content="https://alisoltani7596.github.io/two-seats/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:url" content="https://alisoltani7596.github.io/two-seats/">
+<meta name="twitter:card" content="summary_large_image">
+<!-- The build step rewrites these paths to content-hashed names. -->
+<script>window.TS_ASSETS = { titles: "data/titles.json", extra: "data/extra.json", world: "data/world.js" };</script>
+<link rel="preload" href="data/titles.json" as="fetch" crossorigin>
+<link rel="preload" href="assets/fonts/bricolage.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/fonts/geist.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="src/styles.css">
+</head>
+<body>
+
+<svg class="sprite" aria-hidden="true" width="0" height="0">
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M4 12.5l5 5L20 6.5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-bookmark" viewBox="0 0 24 24"><path d="M6 3.5h12v17l-6-4.5-6 4.5z"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5l11 7-11 7z"/></symbol>
+  <symbol id="i-ext" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4L10 14M18 13v7H4V6h7"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21.5s7-7.2 7-11.5a7 7 0 00-14 0c0 4.3 7 11.5 7 11.5z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M9.5 14.5l5-5M8 11L6 13a3.5 3.5 0 005 5l2-2M16 13l2-2a3.5 3.5 0 00-5-5l-2 2"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M18.7 5.3l-1.6 1.6M6.9 17.1l-1.6 1.6"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8.5 8.5 0 019.5 4a8.5 8.5 0 1010.5 10.5z"/></symbol>
+  <symbol id="i-undo" viewBox="0 0 24 24"><path d="M4 9h11a5 5 0 110 10H9M4 9l4-4M4 9l4 4"/></symbol>
+  <symbol id="i-match" viewBox="0 0 24 24"><rect x="2.5" y="6" width="11" height="12" rx="3.5"/><rect x="10.5" y="6" width="11" height="12" rx="3.5"/></symbol>
+  <symbol id="i-rate" viewBox="0 0 24 24"><rect x="5" y="3.5" width="14" height="17" rx="3"/><path d="M9 12.5l2 2 4-4.5"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.8"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.8"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.8"/></symbol>
+  <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.4 3.8 5.2 3.8 8.5s-1.2 6.1-3.8 8.5c-2.6-2.4-3.8-5.2-3.8-8.5s1.2-6.1 3.8-8.5z"/></symbol>
+  <symbol id="i-ask" viewBox="0 0 24 24"><path d="M4.5 5.5h15v10h-8l-4.5 3.5v-3.5H4.5z"/><path d="M9 10.5h6"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></symbol>
+  <symbol id="i-seats" viewBox="0 0 24 24"><circle cx="8.5" cy="8.5" r="3"/><circle cx="16" cy="9.5" r="2.5"/><path d="M3.5 19c.6-3.3 2.6-5 5-5s4.4 1.7 5 5M14 14.3c2.6-.4 5.6.8 6.5 4.7"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+</svg>
+
+<!-- ============================================================ setup -->
+<section id="setup" class="setup" hidden>
+  <div class="stub">
+    <div class="stub-top">
+      <span class="stub-brand"><svg class="mark" viewBox="0 0 28 20" aria-hidden="true"><rect class="m-a" x="1" y="3" width="15" height="15" rx="4"/><rect class="m-b" x="12" y="3" width="15" height="15" rx="4"/></svg>Two Seats</span>
+      <span class="stub-no">Admit two</span>
+    </div>
+    <h1 class="stub-h">Find something<br>you'll <em>both</em> want<br>to watch.</h1>
+    <p class="stub-p">Rate a few films and series each. Two Seats reads the two tastes separately, then shows what survives both — not an average, and not a top-ten list that suits neither of you.</p>
+    <div class="stub-names">
+      <label class="seat seat-a">
+        <span class="seat-no">Seat A</span>
+        <input type="text" id="nameA" maxlength="18" placeholder="Your name" autocomplete="off" spellcheck="false">
+      </label>
+      <label class="seat seat-b">
+        <span class="seat-no">Seat B</span>
+        <input type="text" id="nameB" maxlength="18" placeholder="Their name" autocomplete="off" spellcheck="false">
+      </label>
+    </div>
+    <button type="button" class="btn big" id="startBtn">Take our seats</button>
+    <p class="stub-fine" id="setupSolo"><button type="button" class="link" id="soloBtn">Watching alone?</button> Leave the second seat empty; everything still works.</p>
+    <div class="stub-tear" aria-hidden="true"></div>
+    <ul class="stub-points">
+      <li><b>No account.</b> Ratings stay in this browser.</li>
+      <li><b>Two phones?</b> Send your ratings as a link.</li>
+      <li><b>No tracking.</b> No analytics, no server, no keys.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============================================================ app -->
+<div id="app" hidden>
+<header class="top">
+  <div class="top-in">
+    <a class="brand" href="./" aria-label="Two Seats home">
+      <svg class="mark" viewBox="0 0 28 20" aria-hidden="true"><rect class="m-a" x="1" y="3" width="15" height="15" rx="4"/><rect class="m-b" x="12" y="3" width="15" height="15" rx="4"/></svg>
+      <span>Two Seats</span>
+    </a>
+    <nav id="tabs" class="tabs" aria-label="Sections">
+      <button type="button" data-tab="match"><svg class="ic"><use href="#i-match"/></svg><span>Match</span></button>
+      <button type="button" data-tab="rate"><svg class="ic"><use href="#i-rate"/></svg><span>Rate</span></button>
+      <button type="button" data-tab="browse"><svg class="ic"><use href="#i-grid"/></svg><span>Browse</span></button>
+      <button type="button" data-tab="map"><svg class="ic"><use href="#i-globe"/></svg><span>Map</span></button>
+      <button type="button" data-tab="ask"><svg class="ic"><use href="#i-ask"/></svg><span>Ask</span></button>
+      <button type="button" data-tab="you"><svg class="ic"><use href="#i-seats"/></svg><span>Seats</span></button>
+    </nav>
+    <div class="top-right">
+      <div id="whoSeg" class="seg who" role="group" aria-label="Pick for"></div>
+      <button type="button" id="themeBtn" class="icon-btn" title="Switch between light and dark" aria-label="Switch between light and dark"><svg class="ic"><use href="#i-sun"/></svg></button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="typeline">
+    <div id="typeSeg" class="seg" role="group" aria-label="Films or series">
+      <button type="button" data-type="all">Everything</button>
+      <button type="button" data-type="movie">Films</button>
+      <button type="button" data-type="series">Series</button>
+    </div>
+    <span id="dataNote" class="data-note"></span>
+  </div>
+
+  <!-- match -->
+  <section class="panel" data-panel="match">
+    <div class="panel-head">
+      <p class="eyebrow" id="matchEyebrow">Match</p>
+      <h1 id="matchTitle">What you'll both like</h1>
+      <p id="matchLede" class="lede"></p>
+    </div>
+    <div id="matchBody"><div class="skel skel-hero"></div><div class="skel skel-row"></div><div class="skel skel-row"></div><div class="skel skel-row"></div></div>
+  </section>
+
+  <!-- rate -->
+  <section class="panel" data-panel="rate">
+    <div class="panel-head">
+      <p class="eyebrow">Rate</p>
+      <h1>What have you already seen?</h1>
+      <p class="lede">Score titles you've watched. Each rating reshapes the match immediately — about twenty makes it reliable.</p>
+    </div>
+    <div id="rateBody"></div>
+  </section>
+
+  <!-- browse -->
+  <section class="panel" data-panel="browse">
+    <div class="panel-head">
+      <p class="eyebrow">Browse</p>
+      <h1>The whole library</h1>
+      <p class="lede">Filter by genre, language, country, year and critics' score.</p>
+    </div>
+    <div class="browse-bar">
+      <label class="search"><svg class="ic" aria-hidden="true"><use href="#i-search"/></svg><input type="search" id="q" placeholder="Search title, person, place, genre…" autocomplete="off" aria-label="Search the library"></label>
+      <select id="sort" aria-label="Sort by">
+        <option value="fit">Best fit</option>
+        <option value="acclaim">Critics' score</option>
+        <option value="reach">Best known</option>
+        <option value="year">Newest</option>
+        <option value="short">Shortest</option>
+        <option value="title">A–Z</option>
+      </select>
+      <select id="status" aria-label="Show">
+        <option value="any">Everything</option>
+        <option value="unrated">Not yet rated</option>
+        <option value="rated">Already rated</option>
+        <option value="list">Saved</option>
+        <option value="favs">By a favourite</option>
+      </select>
+      <button type="button" id="filtersToggle" class="btn">Filters</button>
+    </div>
+    <div id="filters" class="filters">
+      <div class="f-block"><h3>Genre <span class="f-hint">tap to keep · again to exclude</span></h3><div class="chips" id="genreChips"></div></div>
+      <div class="f-block"><h3>Language <span class="f-hint">tap to keep · again to exclude</span></h3><div class="chips" id="langChips"></div></div>
+      <div class="f-block"><h3>Country <span class="f-hint">tap to keep · again to exclude</span></h3><div class="chips" id="countryChips"></div></div>
+      <div class="f-block ranges">
+        <label class="slider">Rotten Tomatoes at least <output id="rtOut"></output><input type="range" id="minRt" min="0" max="100" step="1"></label>
+        <label class="slider">Metacritic at least <output id="mcOut"></output><input type="range" id="minMc" min="0" max="100" step="1"></label>
+        <label class="slider">From <output id="yearFromOut"></output><input type="range" id="yearFrom" min="2000" max="2026" step="1"></label>
+        <label class="slider">To <output id="yearToOut"></output><input type="range" id="yearTo" min="2000" max="2026" step="1"></label>
+        <label class="check"><input type="checkbox" id="requireScores"> Only titles with a critics' score</label>
+        <button type="button" id="resetFilters" class="btn ghost">Reset filters</button>
+      </div>
+    </div>
+    <p id="browseCount" class="count-line"></p>
+    <div id="browseGrid" class="grid"></div>
+    <div id="browseMore" class="more"></div>
+  </section>
+
+  <!-- map -->
+  <section class="panel" data-panel="map">
+    <div class="panel-head">
+      <p class="eyebrow">Map</p>
+      <h1>Where the stories happen</h1>
+      <p class="lede">Settings, and the real places that stood in for invented ones.</p>
+    </div>
+    <div class="map-controls">
+      <div id="mapKind" class="seg" role="group" aria-label="Place type">
+        <button type="button" data-kind="all">Both</button>
+        <button type="button" data-kind="set">Set there</button>
+        <button type="button" data-kind="filmed">Filmed there</button>
+      </div>
+      <div id="mapSeen" class="seg" role="group" aria-label="Rated or not">
+        <button type="button" data-seen="all">All</button>
+        <button type="button" data-seen="rated">Rated</button>
+        <button type="button" data-seen="unrated">Not rated</button>
+      </div>
+      <div class="zooms">
+        <button type="button" class="icon-btn" id="zoomOut" aria-label="Zoom out">−</button>
+        <button type="button" class="icon-btn" id="zoomIn" aria-label="Zoom in">+</button>
+        <button type="button" class="btn ghost sm" id="zoomReset">Reset</button>
+      </div>
+    </div>
+    <div class="map-wrap"><div class="map-frame"><svg id="map" role="img" aria-label="World map of story locations"></svg></div><div id="mapSide" class="map-side"></div></div>
+  </section>
+
+  <!-- ask -->
+  <section class="panel" data-panel="ask">
+    <div class="panel-head">
+      <p class="eyebrow">Ask</p>
+      <h1>Describe it in your own words</h1>
+      <p class="lede">Runs entirely in your browser — nothing you type is sent anywhere.</p>
+    </div>
+    <div id="askBody"></div>
+  </section>
+
+  <!-- seats -->
+  <section class="panel" data-panel="you">
+    <div class="panel-head">
+      <p class="eyebrow">Seats</p>
+      <h1>Seats and sharing</h1>
+      <p class="lede">Names, favourites, how the match is scored, and how to get both tastes onto one device.</p>
+    </div>
+    <div id="youBody" class="cols"></div>
+  </section>
+
+  <footer class="foot">
+    <div class="foot-brand">
+      <svg class="mark" viewBox="0 0 28 20" aria-hidden="true"><rect class="m-a" x="1" y="3" width="15" height="15" rx="4"/><rect class="m-b" x="12" y="3" width="15" height="15" rx="4"/></svg>
+      <span><b>Two Seats</b> · open source · no account · no tracking · <a href="https://github.com/alisoltani7596/two-seats" target="_blank" rel="noopener">source on GitHub</a></span>
+    </div>
+    <p class="credit">Title facts, people, languages, countries, locations, critics' scores and identifiers come from <a href="https://www.wikidata.org/" target="_blank" rel="noopener">Wikidata</a>, released under <a href="https://creativecommons.org/publicdomain/zero/1.0/" target="_blank" rel="noopener">CC0</a>. One-line summaries are adapted from <a href="https://en.wikipedia.org/" target="_blank" rel="noopener">Wikipedia</a> under <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener">CC BY-SA 4.0</a>; each title links to its article. Map outlines from <a href="https://www.naturalearthdata.com/" target="_blank" rel="noopener">Natural Earth</a> (public domain). Posters are generated, not real artwork. Not affiliated with IMDb, Rotten Tomatoes or Metacritic — scores link out so you can check the current number.</p>
+  </footer>
+</main>
+</div>
+
+<div id="scrim" class="scrim" hidden></div>
+<aside id="drawer" class="drawer" hidden aria-label="Title details"></aside>
+<div id="toast" class="toast" role="status" hidden></div>
+<div id="boot" class="boot" hidden><span class="boot-mark"></span><p>Opening your link…</p></div>
+
+<script src="src/data.js"></script>
+<script src="src/poster.js"></script>
+<script src="src/share.js"></script>
+<script src="src/map.js"></script>
+<script src="src/ask.js"></script>
+<script src="src/app.js"></script>
+</body>
+</html>

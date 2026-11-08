@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1200" width="1200" height="1200">
+  <rect width="1200" height="1200" fill="#0E1419"/>
+  <g transform="translate(0,285)">
+  <defs>
+    <clipPath id="seatA"><rect x="768" y="206" width="150" height="160" rx="44"/></clipPath>
+  </defs>
+  <rect width="1200" height="630" fill="#0E1419"/>
+  <!-- ticket perforation down the left edge -->
+  <g fill="#E8A33D" opacity="0.5">
+    <rect x="0" y="0" width="8" height="630"/>
+  </g>
+  <rect x="0" y="0" width="8" height="630" fill="#0E1419"/>
+  <g fill="#E8A33D" opacity="0.55">
+    <rect x="0" y="10" width="8" height="26"/><rect x="0" y="62" width="8" height="26"/><rect x="0" y="114" width="8" height="26"/>
+    <rect x="0" y="166" width="8" height="26"/><rect x="0" y="218" width="8" height="26"/><rect x="0" y="270" width="8" height="26"/>
+    <rect x="0" y="322" width="8" height="26"/><rect x="0" y="374" width="8" height="26"/><rect x="0" y="426" width="8" height="26"/>
+    <rect x="0" y="478" width="8" height="26"/><rect x="0" y="530" width="8" height="26"/><rect x="0" y="582" width="8" height="26"/>
+  </g>
+
+  <text x="78" y="118" fill="#6B7D88" font-family="Helvetica Neue, Helvetica, Arial" font-size="21" font-weight="500" letter-spacing="4.4">ADMIT TWO</text>
+
+  <text x="74" y="268" fill="#E7EEF0" font-family="Helvetica Neue, Helvetica, Arial" font-size="92" font-weight="700" letter-spacing="-3.4">Find something</text>
+  <text x="74" y="364" fill="#E7EEF0" font-family="Helvetica Neue, Helvetica, Arial" font-size="92" font-weight="700" letter-spacing="-3.4">you'll <tspan fill="#E8A33D">both</tspan> want</text>
+  <text x="74" y="460" fill="#E7EEF0" font-family="Helvetica Neue, Helvetica, Arial" font-size="92" font-weight="700" letter-spacing="-3.4">to watch.</text>
+
+  <text x="78" y="546" fill="#93A4AE" font-family="Helvetica Neue, Helvetica, Arial" font-size="27" font-weight="400">Two people rate films and series. Two Seats finds the overlap.</text>
+
+  <!-- the mark: two seats, with the agreement band drawn achromatically -->
+  <rect x="768" y="206" width="150" height="160" rx="44" fill="#E8A33D"/>
+  <rect x="864" y="206" width="150" height="160" rx="44" fill="#2FB9A8"/>
+  <g clip-path="url(#seatA)"><rect x="864" y="206" width="150" height="160" rx="44" fill="#EAF1F2"/></g>
+  <text x="890" y="432" fill="#6B7D88" font-family="Helvetica Neue, Helvetica, Arial" font-size="23" font-weight="500" letter-spacing="3" text-anchor="middle">TWO SEATS</text>
+  </g>
+</svg>
