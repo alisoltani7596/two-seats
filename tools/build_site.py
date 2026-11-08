@@ -78,6 +78,24 @@ def emit_tmdb(assets, precache):
         return
     raw = json.loads(raw_path.read_text())
     providers = json.loads((ROOT / "cache" / "tmdb" / "providers.json").read_text())
+
+    # TMDB lists tiers and resellers as separate services ("Netflix Standard
+    # with Ads", "Crave Amazon Channel"). To a viewer they're the same service,
+    # so fold each into its base: one logo per service, and ticking "Netflix"
+    # in Seats matches titles listed under either tier.
+    def base_name(name):
+        n = re.sub(r"\s+(standard|basic|premium)?\s*with ads$", "", (name or "").strip(), flags=re.I)
+        n = re.sub(r"\s+(amazon|apple tv|roku premium)\s+channel$", "", n, flags=re.I)
+        return n.strip().lower()
+    by_base = {}
+    for pid, (name, _logo, prio) in providers.items():
+        by_base.setdefault(base_name(name), []).append((name.lower() == base_name(name), -(prio or 99), int(pid)))
+    canon = {}
+    for group in by_base.values():
+        keep = sorted(group, reverse=True)[0][2]          # prefer the plain-named entry
+        for *_, pid in group:
+            canon[pid] = keep
+    merge = lambda pids: list(dict.fromkeys(canon.get(x, x) for x in pids))
     ids = json.loads((ROOT / "data" / "tmdb-ids.json").read_text())
     rows = json.loads((ROOT / "data" / "titles.json").read_text())["rows"]
 
@@ -94,8 +112,10 @@ def emit_tmdb(assets, precache):
         if d.get("v"): media["v"][i] = d["v"]
         for cc, w in (d.get("w") or {}).items():
             per_cc.setdefault(cc, {"s": {}, "f": {}, "r": []})
-            if w.get("s"): per_cc[cc]["s"][i] = w["s"]
-            if w.get("f"): per_cc[cc]["f"][i] = w["f"]
+            s_ids = merge(w.get("s") or [])
+            f_ids = [x for x in merge(w.get("f") or []) if x not in s_ids]
+            if s_ids: per_cc[cc]["s"][i] = s_ids
+            if f_ids: per_cc[cc]["f"][i] = f_ids
             if w.get("r"): per_cc[cc]["r"].append(i)
 
     assets["media"] = emit("data", "media", "json", json.dumps(media, separators=(",", ":")).encode())
